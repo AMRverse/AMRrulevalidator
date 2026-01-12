@@ -83,7 +83,7 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     
     # Check gene accessions
     # okay so for these columns, at least one of them must have a value
-    print("\nChecking nodeID, refseq accession, GenBank accession and HMM accession columns...")
+    print("\nChecking nodeID, protein accession, nucleotide accession and HMM accession columns...")
         
     # Print placeholder message about database version
     print(f"\nChecking against AMRFinderPlus database version {rm.get_amrfp_db_version()}...")
