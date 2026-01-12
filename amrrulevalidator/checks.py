@@ -692,12 +692,6 @@ def check_bp_standard(breakpoint_standard_list, rows):
 
 def check_bp_condition(breakpoint_condition_list, rows):
 
-    bp_condition_missing, rows = check_if_col_empty(breakpoint_condition_list, 'breakpoint condition', rows)
-
-    if bp_condition_missing:
-        print("❌ Breakpoint condition column is empty. Please provide values in this column to validate.")
-        return False, rows
-
     invalid_dict, rows = check_values_in_list(
         value_list=breakpoint_condition_list,
         allowed_values=BREAKPOINT_CONDITIONS,
