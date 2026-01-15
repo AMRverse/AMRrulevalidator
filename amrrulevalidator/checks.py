@@ -198,7 +198,7 @@ def check_txid_organism(txid_list, organism_list, rows, ncbi_organism_dict):
             if current_organism != expected_organism:
                 invalid_dict[index] = f"Organism name {current_organism} does not match expected name {expected_organism} for taxid {txid}"
                 rows[index]['organism'] = f'CHECK VALUE: {organism_list[index]}'
-                rows[index]['txid'] = f'CHECK VALUE: {organism_list[index]}'
+                rows[index]['txid'] = f'CHECK VALUE: {txid_list[index]}'
   
     success_message = "All txid-organism pairs are valid"
     failure_message = "Txid-organism pairs must match the what is in resources/ncbi_taxonomy.tsv."
@@ -457,13 +457,6 @@ def check_context(context_list, variation_list, rows):
 
 
 def check_drug_drugclass(drug_list, drug_class_list, rows, rm=None):
-    # preserve original values
-    #orig_drug = [v for v in drug_list]
-    #orig_drug_class = [v for v in drug_class_list]
-    
-    # skip empty check since these columns can be empty if the other has a value
-    #check_if_col_empty(drug_list, 'drug name', rows=rows, skip_empty_check=True)
-    #check_if_col_empty(drug_class_list, 'drug class', rows=rows, skip_empty_check=True)
 
     # Determine row validity based on all values
     row_valid = []
@@ -765,7 +758,7 @@ def check_evidence_code(evidence_code_list, rows):
 def check_evidence_grade_limitations(evidence_grade_list, evidence_limitations_list, rows):
 
     grade_missing, rows = check_if_col_empty(evidence_grade_list, 'evidence grade', rows=rows)
-    limitations_missing, rows = check_if_col_empty(evidence_limitations_list, 'evidence limitations', rows=rows)
+    limitations_missing, rows = check_if_col_empty(evidence_limitations_list, 'evidence limitations', rows=rows, skip_empty_check=True)
 
     # if both are missing, then return False
     if grade_missing and limitations_missing:
