@@ -632,17 +632,21 @@ def check_bp_standard(breakpoint_standard_list, rows):
     # Allowable patterns for breakpoint standards
     suggested_values = [
         r'^ECOFF \(\w+ \d{4}\)$',  # ECOFF (Month Year)
+        r'^(EUCAST ECOFF|CLSI ECOFF) \(\w+ \d{4}\)$',  # EUCAST/CLSI ECOFF (Month Year)
         r'^EUCAST .+ Expert Rules \(\w+ \d{4}\)$',  # EUCAST [organism] Expert Rules (Month year)
-        r'^EUCAST Expected Resistant Phenotypes v\d+(\.\d+)? \(\d{4}\)$',  # EUCAST Expected Resistant Phenotypes version (year)
-        r'^(EUCAST|CLSI)\s+v\d+(\.\d+)?\s+\(\d{4}\)$'  # EUCAST/CLSI version (year)
+        r'^EUCAST (E|e)xpected (R|r)esistant (P|p)henotypes v\d+(\.\d+)? \(\d{4}\)$',  # EUCAST Expected Resistant Phenotypes version (year)
+        r'^(EUCAST|CLSI)\s+v\d+(\.\d+)?\s+\(\d{4}\)$',  # EUCAST/CLSI version (year)
+        r'^CLSI M\d+Ed\d+E \(\d{4}\)$'  # CLSI Mxx (year)
     ]
 
     invalid_dict, rows = validate_pattern(breakpoint_standard_list, suggested_values, rows, 'breakpoint standard', missing_allowed=False)
     unique_values = set(breakpoint_standard_list)
     
     failure_message = ("We check for the following formats: ECOFF (Month Year), "
+                      "EUCAST/CLSI ECOFF (Month Year), "
                       "EUCAST [organism] Expert Rules (Month year), "
                       "EUCAST Expected Resistant Phenotypes vX (year), "
+                      "CLSI Mxx (year), "
                       "or EUCAST/CLSI vX (year).")
     
     check_result = report_check_results(
