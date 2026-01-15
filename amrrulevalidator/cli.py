@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from amrrulevalidator import __version__
 from amrrulevalidator.utils.resources import ResourceManager
 from amrrulevalidator.validate import run_validate
 from amrrulevalidator.clean import run_clean
@@ -8,6 +9,7 @@ from amrrulevalidator.convert_rules import run_convert_to_latest_spec
 
 def main():
     parser = argparse.ArgumentParser(prog="amrrule", description="AMRrulevalidator")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # validate subcommand
@@ -24,7 +26,7 @@ def main():
     update_parser = subparsers.add_parser("update-resources", help="Update CARD and AMRFinderPlus resources used for validation")
 
     # convert to latest spec subcommand
-    convert_parser = subparsers.add_parser("convert-to-latest-spec", help="Convert AMRrules file to the latest specification")
+    convert_parser = subparsers.add_parser("convert-to-latest-spec", help="Convert AMRrules file to the latest specification (v0.5 -> v0.6)")
     convert_parser.add_argument("--input", required=True, help="AMRrules tsv file to convert")
     convert_parser.add_argument("--output", required=True, help="Converted AMRrules file, in tsv format")
     
