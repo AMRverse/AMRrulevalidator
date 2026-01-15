@@ -258,90 +258,42 @@ def check_gene(gene_list, rule_list, rows):
 
 
 def check_id_accessions(nodeID_list, protein_list, nucleotide_list, hmm_list, variation_type_list, refseq_prot_accessions, refseq_nucl_accessions, refseq_node_ids, hmm_accessions, rows):
-    
-    # preserve original values to decide row validity based on original inputs
-    orig_node = [v for v in nodeID_list]
-    orig_prot = [v for v in protein_list]
-    orig_nucl = [v for v in nucleotide_list]
-    orig_hmm = [v for v in hmm_list]
 
-    # We don't need to check if the whole column is empty, because that's not relevant
-    #nodeID_missing, rows = check_if_col_empty(nodeID_list, 'nodeID', rows=rows)
-    #protein_missing, rows = check_if_col_empty(protein_list, 'protein accession', rows=rows)
-    #nucleotide_missing, rows = check_if_col_empty(nucleotide_list, 'nucleotide accession', rows=rows)
-    #hmm_missing, rows = check_if_col_empty(hmm_list, 'HMM accession', rows=rows)
-
-    # now check individual columns for allowable values
-    # this function is actually multiple smaller checks
-    # for each list, if any value is NA or empty, we should replace with ENTRY MISSING, as there should be a dash
-    # secondly, if any value is not empty, a dash, or ENTRY MISSING, we should check if it's in the relevant accession list
-    # finally, any rows that have all values empty, NA, '-' or ENTRY MISSING should be checked to see if they have variation type 'Combination'
-    # this would make that row valid. Otherwise, the row is invalid
-
-    invalid_node_dict = {}
-    invalid_prot_dict = {}
-    invalid_nucl_dict = {}
-    invalid_hmm_dict = {}
-
-    #if not nodeID_missing:
-    invalid_node_dict, rows = check_values_in_list(nodeID_list, refseq_node_ids, 'nodeID', rows, missing_allowed=True, fail_reason="is not a valid NCBI Reference Gene Hierarchy node ID")
-
-    #if not protein_missing:
-    invalid_prot_dict, rows = check_values_in_list(protein_list, refseq_prot_accessions, 'protein accession', rows, missing_allowed=True, fail_reason="is not an NCBI Reference Gene Catalog protein accession")
-
-    #if not nucleotide_missing:
-    invalid_nucl_dict, rows = check_values_in_list(nucleotide_list, refseq_nucl_accessions, 'nucleotide accession', rows, missing_allowed=True, fail_reason="is not an NCBI Reference Gene Catalog nucleotide accession")
-
-    #if not hmm_missing:
-    invalid_hmm_dict, rows = check_values_in_list(hmm_list, hmm_accessions, 'HMM accession', rows, missing_allowed=True, fail_reason="is not an AMRFinderPlus HMM accession")
-
-    # Check that in combination, at least one of these columns has a value
-    #invalid_combo_dict = {}
-    #for index, values in enumerate(zip(nodeID_list, protein_list, nucleotide_list, hmm_list)):
-    #    values = [value.strip() for value in values]
-    #    if all(value in ['NA', '-', 'ENTRY MISSING', ''] for value in values):
-    #        # if all the values are empty, check if variation type is 'Combination' for this row
-    #        # if variation type is 'Combination', then this is a valid value
-    #        if variation_type_list[index].strip() == 'Combination':
-    #            continue
-    #        else:
-    #            invalid_combo_dict[index] = "All ID accessions are empty, NA, or '-'. At least one of these columns must contain a valid accession value."
-
-    # Decide row validity based on ORIGINAL values (before any 'ENTRY MISSING' substitutions)
+    # Determine row validity based on all values
     row_valid = []
-    for i, (n, p, nu, h) in enumerate(zip(orig_node, orig_prot, orig_nucl, orig_hmm)):
+    for i, (n, p, nu, h) in enumerate(zip(nodeID_list, protein_list, nucleotide_list, hmm_list)):
         vals = [str(x).strip() for x in (n, p, nu, h)]
-        # a row is valid if any accession cell has a real value, or variation type is Combination
         if any(v not in ['NA', '-', ''] for v in vals) or variation_type_list[i].strip() == 'Combination':
             row_valid.append(True)
         else:
+            # mark as invalid if all values are empty
             row_valid.append(False)
-
-    # Revert 'ENTRY MISSING' markings for rows that are valid; ensure invalid rows have ENTRY MISSING
-    col_map = [('nodeID', orig_node), ('protein accession', orig_prot), ('nucleotide accession', orig_nucl), ('HMM accession', orig_hmm)]
-    for i, valid in enumerate(row_valid):
-        if valid:
-            # for valid rows do NOT mark empty cells as 'ENTRY MISSING' — revert to original value if check_helpers modified it
-            for col_name, orig_list in col_map:
-                if rows[i].get(col_name) == 'ENTRY MISSING':
-                    rows[i][col_name] = orig_list[i]
-        else:
-            # for invalid rows, ensure each accession cell is explicitly marked ENTRY MISSING if empty-like
-            for col_name, orig_list in col_map:
-                v = str(orig_list[i]).strip()
-                if v in ['NA', '-', '', 'ENTRY MISSING']:
-                    rows[i][col_name] = 'ENTRY MISSING'
     
-    # extract the invalid rows based on row_valid
-    final_invalid_dict = {}
+    # now we need to loop through each row, and mark missing values for the invalid rows
+    invalid_rows_combo = {}
+    # for any rows that are invalid, mark all columns as ENTRY MISSING
+    col_map = [('nodeID', nodeID_list), ('protein accession', protein_list), ('nucleotide accession', nucleotide_list), ('HMM accession', hmm_list)]
     for i, valid in enumerate(row_valid):
         if not valid:
-            final_invalid_dict[i] = "All ID accessions are empty, NA, or '-'. At least one of these columns must contain a valid accession value, unless variation type is 'Combination'."
+            # For invalid rows, mark empty/NA/- cells as ENTRY MISSING
+            for col_name, values_list in col_map:
+                v = str(values_list[i]).strip()
+                if v in ['NA', '-', '', 'ENTRY MISSING']:
+                    rows[i][col_name] = 'ENTRY MISSING'
+            # note that this row is invalid due to all accessions being empty
+            invalid_rows_combo[i] = "All ID accessions are empty, NA, or '-'. At least one of these columns must contain a valid accession value, unless variation type is 'Combination'."
+
+    skip_invalid_rows = list(invalid_rows_combo.keys())
+    # now we need to check that for valid rows, the accessions actually exist
+    # for this, we want to skip any rows where we've already marked them as 'ENTRY MISSING'
+    invalid_node_dict, rows = check_values_in_list(nodeID_list, refseq_node_ids, 'nodeID', rows, skip_rows=skip_invalid_rows, missing_allowed=True, fail_reason="is not a valid NCBI Reference Gene Hierarchy node ID")
+    invalid_prot_dict, rows = check_values_in_list(protein_list, refseq_prot_accessions, 'protein accession', rows, skip_rows=skip_invalid_rows, missing_allowed=True, fail_reason="is not an NCBI Reference Gene Catalog protein accession")
+    invalid_nucl_dict, rows = check_values_in_list(nucleotide_list, refseq_nucl_accessions, 'nucleotide accession', rows, skip_rows=skip_invalid_rows, missing_allowed=True, fail_reason="is not an NCBI Reference Gene Catalog nucleotide accession")
+    invalid_hmm_dict, rows = check_values_in_list(hmm_list, hmm_accessions, 'HMM accession', rows, missing_allowed=True, skip_rows=skip_invalid_rows, fail_reason="is not an AMRFinderPlus HMM accession")
 
     check_result = report_check_results(
         check_name="ID accessions",
-        #invalid_dict={**invalid_node_dict, **invalid_prot_dict, **invalid_nucl_dict, **invalid_hmm_dict},
-        invalid_dict = final_invalid_dict,
+        invalid_dict={**invalid_rows_combo, **invalid_node_dict, **invalid_prot_dict, **invalid_nucl_dict, **invalid_hmm_dict},
         success_message="All ID accessions are valid",
         failure_message="At least one ID accession must be present, not 'NA', empty or '-'. Node IDs should be in the NCBI Reference Gene Hierarchy node ID list, protein and nucleotide accessions should be in the NCBI Reference Gene Catalog accession lists, and HMM accessions should be in the AMRFinderPlus HMM accession list.\nNOTE: If you have used an accession outside of those reference catalogs (e.g. your gene is not present in the AMRFinderPlus database), then this check will fail. Please double check those accessions exist."
     )
@@ -505,50 +457,64 @@ def check_context(context_list, variation_list, rows):
 
 
 def check_drug_drugclass(drug_list, drug_class_list, rows, rm=None):
-    drug_missing, rows = check_if_col_empty(drug_list, 'drug name', rows)
-    drug_class_missing, rows = check_if_col_empty(drug_class_list, 'drug class', rows)
+    # preserve original values
+    #orig_drug = [v for v in drug_list]
+    #orig_drug_class = [v for v in drug_class_list]
+    
+    # skip empty check since these columns can be empty if the other has a value
+    #check_if_col_empty(drug_list, 'drug name', rows=rows, skip_empty_check=True)
+    #check_if_col_empty(drug_class_list, 'drug class', rows=rows, skip_empty_check=True)
 
-    invalid_dict_combo = {}
-    missing_values = ['NA', '-', '', 'ENTRY MISSING']
+    # Determine row validity based on all values
+    row_valid = []
+    for i, (d, dc) in enumerate(zip(drug_list, drug_class_list)):
+        vals = [str(x).strip() for x in (d, dc)]
+        if any(v not in ['NA', '-', ''] for v in vals):
+            row_valid.append(True)
+        else:
+            # mark as invalid if all values are empty
+            row_valid.append(False)
+    
+    # now we need to loop through each row, and mark missing values for the invalid rows
+    invalid_rows_combo = {}
+    # for any rows that are invalid, mark all columns as ENTRY MISSING
+    col_map = [('drug', drug_list), ('drug class', drug_class_list)]
+    for i, valid in enumerate(row_valid):
+        if not valid:
+            # For invalid rows, mark empty/NA/- cells as ENTRY MISSING
+            for col_name, values_list in col_map:
+                v = str(values_list[i]).strip()
+                if v in ['NA', '-', '', 'ENTRY MISSING']:
+                    rows[i][col_name] = 'ENTRY MISSING'
+            # note that this row is invalid due to all accessions being empty
+            invalid_rows_combo[i] = "Both of drug and drug class columns are empty, NA, or '-'. At least one of these columns must contain a valid CARD drug or drug class."
 
-    if not drug_missing and not drug_class_missing:
-        # check in combination
-        for index, (drug, drug_class) in enumerate(zip(drug_list, drug_class_list)):
-            drug = drug.strip()
-            drug_class = drug_class.strip()
-            if drug in missing_values and drug_class in missing_values:
-                invalid_dict_combo[index] = "Both drug and drug class are empty, 'NA', or '-'. At least one of these columns must contain a valid CARD drug or drug class name."
-                rows[index]['drug'] = 'ENTRY MISSING'
-                rows[index]['drug class'] = 'ENTRY MISSING'
-                continue
+    skip_invalid_rows = list(invalid_rows_combo.keys())
 
-    # now check each column individually, against the allowed values
-    invalid_dict_drug = {}
-    invalid_dict_drug_class = {}
-    if not drug_missing:
-        invalid_dict_drug, rows = check_values_in_list(
-            value_list=drug_list,
-            allowed_values=rm.drug_names(),
-            col_name='drug name',
-            rows=rows,
-            missing_allowed=True,
-            fail_reason="is not a valid CARD drug name"
-        )
-    if not drug_class_missing:
-        invalid_dict_drug_class, rows = check_values_in_list(
-            value_list=drug_class_list,
-            allowed_values=rm.drug_classes(),
-            col_name='drug class',
-            rows=rows,
-            missing_allowed=True,
-            fail_reason="is not a valid CARD drug class name"
-        )
+    invalid_dict_drug, rows = check_values_in_list(
+        value_list=drug_list,
+        allowed_values=rm.drug_names(),
+        col_name='drug name',
+        rows=rows,
+        skip_rows = skip_invalid_rows,
+        missing_allowed=True,
+        fail_reason="is not a valid CARD drug name"
+    )
+    invalid_dict_drug_class, rows = check_values_in_list(
+        value_list=drug_class_list,
+        allowed_values=rm.drug_classes(),
+        col_name='drug class',
+        rows=rows,
+        skip_rows = skip_invalid_rows,
+        missing_allowed=True,
+        fail_reason="is not a valid CARD drug class name"
+    )
 
     check_result = report_check_results(
         check_name="drug and drug class",
-        invalid_dict={**invalid_dict_drug, **invalid_dict_drug_class, **invalid_dict_combo},
+        invalid_dict={**invalid_rows_combo, **invalid_dict_drug, **invalid_dict_drug_class},
         success_message="All drug and drug class values are valid",
-        failure_message="Drug and drug class columns must contain a value that is not empty, NA or '-'. Drug names and classes should be in the CARD ontology list, as per file resources/card_drug_names.tsv."
+        failure_message="One of drug and drug class columns must contain a value that is not empty, NA or '-'. Drug names and classes should be in the CARD ontology list, as per file resources/card_drug_names.tsv."
     )
 
     return check_result, rows

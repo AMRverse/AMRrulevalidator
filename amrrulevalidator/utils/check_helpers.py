@@ -65,7 +65,7 @@ def validate_pattern(value_list, patterns, rows, col_name, missing_allowed=False
     return invalid_indices, rows
 
 
-def check_values_in_list(value_list, allowed_values, col_name, rows, missing_allowed=False, fail_reason=None):
+def check_values_in_list(value_list, allowed_values, col_name, rows, skip_rows=None, missing_allowed=False, fail_reason=None):
     """
     Check if all values in a list are in the set of allowed values.
     
@@ -74,6 +74,8 @@ def check_values_in_list(value_list, allowed_values, col_name, rows, missing_all
         allowed_values: List of allowed values
         col_name: Name of the column being checked
         missing_allowed: Whether missing values are allowed
+        skip_rows: List or row indicies to skip, as these have already been marked invalid
+        fail_reason: Reason to include in failure message
         
     Returns:
         dict: Dictionary of invalid indices with reasons
@@ -85,6 +87,8 @@ def check_values_in_list(value_list, allowed_values, col_name, rows, missing_all
         allowed_values = set(allowed_values) | {'-'}
 
     for index, value in enumerate(value_list):
+        if skip_rows and index in skip_rows:
+            continue
         value = value.strip()
         if not missing_allowed and value in ['NA', '-', '']:
             invalid_dict[index] = f"Missing value in {col_name}"
@@ -97,21 +101,24 @@ def check_values_in_list(value_list, allowed_values, col_name, rows, missing_all
     return invalid_dict, rows
 
 
-def check_if_col_empty(col_values, col_name, rows):
+def check_if_col_empty(col_values, col_name, rows, skip_empty_check=False):
     """
     Check if a column is empty or contains only missing values.
     
     Args:
         col_values: List of values in the column
         col_name: Name of the column
+        rows: List of rows with missing values flagged in that column
+        skip_empty_check: If True, don't flag the column as empty (for multi-column validation)
         
     Returns:
         tuple: (bool indicating if the column is empty, list of rows with missing values flagged in that column)
     """
     if all(value.strip() in ['NA', '-', ''] for value in col_values):
-        print(f"Column '{col_name}' is empty or contains only missing values.")
-        for row in rows:
-            row[col_name] = "ENTRY MISSING"
+        if not skip_empty_check:
+            print(f"Column '{col_name}' is empty or contains only missing values.")
+            for row in rows:
+                row[col_name] = "ENTRY MISSING"
         return True, rows
     else:
-        return False, rows 
+        return False, rows
