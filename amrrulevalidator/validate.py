@@ -163,7 +163,7 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     summary_checks["PMID"], rows = check_PMID(get_column("PMID", rows), rows)
 
     # Check evidence code
-    print("\nChecking evidecnce code column...")
+    print("\nChecking evidence code column...")
     summary_checks["evidence code"], rows = check_evidence_code(get_column("evidence code", rows), rows)
  
 
