@@ -577,27 +577,27 @@ def check_breakpoint(breakpoint_list, clinical_cat_list, rows):
         return False, rows
     
     # otherwise, we can check the column itself, and then in combo with clinical category if that column has at least some values
-    # breakpoint can be not applicable, but it can't be empty, NA, or '-'
+    # breakpoint can be not applicable, or not available, but it can't be empty, NA, or '-'
     invalid_dict_breakpoint = {}
     for index, breakpoint in enumerate(breakpoint_list):
         breakpoint = breakpoint.strip()
         if breakpoint in ['NA', '', '-']:
             rows[index]['breakpoint'] = 'ENTRY MISSING'
-            invalid_dict_breakpoint[index] = "Breakpoint is empty, 'NA', or '-'. Breakpoint should contain information about the MIC or disk breakpoint, or 'not applicable' if no breakpoint is available."
+            invalid_dict_breakpoint[index] = "Breakpoint is empty, 'NA', or '-'. Breakpoint should contain information about the MIC or disk breakpoint, 'not available' if no breakpoint is available, or 'not applicable' if the rule is for a drug class."
             continue
         # if the breakpoint is not empty, we can check that it starts with one of the expected prefixes
-        if not any(breakpoint.startswith(prefix) for prefix in ['MIC <', 'MIC <=', 'disk >', 'MIC >', 'MIC >=', 'disk <', 'not applicable']):
-            invalid_dict_breakpoint[index] = f"Breakpoint '{breakpoint}' does not start with an expected prefix (MIC <, MIC <=, disk >, MIC >, MIC >=, disk <, not applicable)."
+        if not any(breakpoint.startswith(prefix) for prefix in ['MIC <', 'MIC <=', 'disk >', 'MIC >', 'MIC >=', 'disk <', 'not applicable', 'not available']):
+            invalid_dict_breakpoint[index] = f"Breakpoint '{breakpoint}' does not start with an expected prefix (MIC <, MIC <=, disk >, MIC >, MIC >=, disk <, not available, not applicable)."
             rows[index]['breakpoint'] = 'CHECK VALUE: ' + breakpoint
             continue
         # now check if breakpoint matches what we'd expected for the clinical category, only if clinical category isn't completely empty
         if not all(value.strip() == 'ENTRY MISSING' for value in clinical_cat_list):
             category = clinical_cat_list[index].strip()
             reason = None
-            if category == 'S' and not any(breakpoint.startswith(prefix) for prefix in ['MIC <', 'MIC <=', 'disk >', 'not applicable']):
-                reason = "If clinical category is 'S', breakpoint should contain a value of 'MIC <', 'MIC <=', or 'disk >'. 'not applicable' is an allowed value if no breakpoint is available due to expected resistances."
-            if category == 'R' and not any(breakpoint.startswith(prefix) for prefix in ['MIC >', 'MIC >=', 'disk <', 'not applicable']):
-                reason = "If clinical category is 'R', breakpoint should contain a value of 'MIC >', 'MIC >=', or 'disk <'. 'not applicable' is an allowed value if no breakpoint is available due to expected resistances."
+            if category == 'S' and not any(breakpoint.startswith(prefix) for prefix in ['MIC <', 'MIC <=', 'disk >', 'not available', 'not applicable']):
+                reason = "If clinical category is 'S', breakpoint should contain a value of 'MIC <', 'MIC <=', or 'disk >'. 'not available' is an allowed value if no breakpoint is available due to expected resistances. 'not applicable' is an allowed value if the rule is for a drug class."
+            if category == 'R' and not any(breakpoint.startswith(prefix) for prefix in ['MIC >', 'MIC >=', 'disk <', 'not available']):
+                reason = "If clinical category is 'R', breakpoint should contain a value of 'MIC >', 'MIC >=', or 'disk <'. 'not available' is an allowed value if no breakpoint is available due to expected resistances. 'not applicable' is an allowed value if the rule is for a drug class."
             if category == 'ENTRY MISSING' or category.startswith('CHECK VALUE'):
                 reason = "Clinical category is missing or invalid, so breakpoint cannot be validated. Please provide clinical category to validate this row properly."
             if reason:
