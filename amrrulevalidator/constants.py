@@ -26,4 +26,4 @@ EVIDENCE_CODES = ["ECO:0001091 knockout phenotypic evidence", "ECO:0000012 funct
 
 EVIDENCE_GRADES = ["high", "moderate", "low", "very low"]
 
-EVIDENCE_LIMITATIONS = ["lacks evidence for this species", "lacks evidence for this genus", "lacks evidence for this allele", "lacks evidence of the degree to which MIC is affected", "low clinical relevance", "unknown clinical relevance", "statistical geno/pheno evidence but no experimental evidence", "conflicting evidence"]
+EVIDENCE_LIMITATIONS = ["lacks evidence for this species", "lacks evidence for this genus", "lacks evidence for this allele", "lacks evidence of the degree to which MIC is affected", "low clinical relevance", "unknown clinical relevance", "statistical geno/pheno evidence but no experimental evidence", "conflicting evidence", "lacks evidence for this drug"]
