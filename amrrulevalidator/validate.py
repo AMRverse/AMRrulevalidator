@@ -69,7 +69,7 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     
     print("\nChecking organism column...")
     organism_list = get_column("organism", rows)
-    org_not_empty, summary_checks["organism"], rows = check_organism(organism_list, rows, ncbi_organism_dict)
+    org_not_empty, summary_checks["organism"], rows, invalid_org_rows = check_organism(organism_list, rows, ncbi_organism_dict)
     
     #Only check txid and organism together if both columns are not empty
     if txid_not_empty and org_not_empty and ncbi_organism_dict:
@@ -159,12 +159,13 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     # Check pheno and clin category in combination, by drug & drug class
     print("\nChecking phenotype and clinical category columns are compatible within drugs or drug classes...")
     # combine all the invalid rows from individual checks
-    invalid_rows_for_pheno_clin = {**invalid_pheno_rows, **invalid_cat_rows, **invalid_drug_rows}
+    invalid_rows_for_pheno_clin = {**invalid_pheno_rows, **invalid_cat_rows, **invalid_drug_rows, **invalid_org_rows}
     summary_checks["phenotype and clinical category"], rows = check_phenotype_clinical(
         get_column("phenotype", rows),
         get_column("clinical category", rows),
         get_column("drug", rows),
         get_column("drug class", rows),
+        get_column("organism", rows),
         invalid_rows_for_pheno_clin,
         rows
     )

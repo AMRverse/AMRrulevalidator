@@ -145,11 +145,11 @@ def check_organism(organism_list, rows, ncbi_organism_dict):
 
     if org_missing:
         print("❌ Organism column is empty. Please provide values in the column to validate.")
-        return False, False, rows
+        return False, False, rows, {}
     
     if not ncbi_organism_dict:
         print("❌ NCBI organism dictionary is not provided. Cannot validate organism names without it.")
-        return True, False, rows
+        return True, False, rows, {}
     
     invalid_dict = {}
 
@@ -181,7 +181,7 @@ def check_organism(organism_list, rows, ncbi_organism_dict):
         unique_values = set(organism_list)
     )
 
-    return True, check_result, rows
+    return True, check_result, rows, invalid_dict
 
 
 def check_txid_organism(txid_list, organism_list, rows, ncbi_organism_dict):
@@ -633,7 +633,8 @@ def check_clinical(clinical_cat_list, rows):
     return check_result, rows, invalid_dict
 
 
-def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_class_list, invalid_rows, rows):
+
+def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_class_list, organism_list, invalid_rows, rows):
     # Check that the combination of phenotypes and clincial categories, for a particular drug or drug class, are valid.
     # Valid combinations are listed in constants.py under PAIRWISE_TABLE. Values that return 'IMPOSSIBLE' are invalid.
     # If drug and drug class are both empty, we can't check this row, and so will skip (these will be flagged earlier anyway).
@@ -642,7 +643,7 @@ def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_
     # rows should then be grouped by drug, or drug class if no drug is listed
     # then for each group, check each pair, and determine if any pair are invalid.
     drug_and_class_dict = {} #key: drug/class, value: list of (phenotype, clinical category) pairs
-    for index, value in enumerate(zip(phenotype_list, clinical_cat_list, drug_list, drug_class_list)):
+    for index, value in enumerate(zip(phenotype_list, clinical_cat_list, drug_list, drug_class_list, organism_list)):
         if index in invalid_rows:
             # skip any rows that we know are invalid already
             print(f"Skipping row {index + 2} because it has already been flagged as invalid for one of the required columns in a previous check.")
@@ -651,6 +652,7 @@ def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_
         clinical_cat = value[1].strip()
         drug = value[2].strip()
         drug_class = value[3].strip()
+        org = value[4].strip()
         if phenotype in ['NA', '-', ''] and clinical_cat in ['NA', '-', '']:
             # can't check rows that are deliberately blank
             continue
@@ -658,8 +660,9 @@ def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_
             # we can't check this row, so we will skip it
             continue
         # create a dictionary for each drug or drug class, and the associated phenotype and clinical category pairs
-        drug_and_class_dict.setdefault(drug if drug not in ['NA', '-', ''] else drug_class, []).append((phenotype, clinical_cat))
-    
+        # need to do this per organism, so we will use a tuple of (drug or drug class, organism) as the key
+        drug_and_class_dict.setdefault((drug if drug not in ['NA', '-', ''] else drug_class, org), []).append((phenotype, clinical_cat))
+
     # now we can check the pairwise table for this combination
     check_result = True # assume all pairs are valid
     invalid_combos = set() # to keep track of invalid combinations, so we don't print duplicates
@@ -673,9 +676,9 @@ def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_
                     check_result = False
 
     if check_result:
-        print("✅ All rules for a given drug/drug class have valid phenotype and clinical category combinations.")
+        print("✅ All rules for a given drug/drug class, within the same organism, have valid phenotype and clinical category combinations. NOTE: This check only applies to rules where the drug/drug class, clinical category, phenotype and organism were found to be valid.")
     else:
-        print("❌ All rules for a given drug/drug class must have valid combinations of phenotype and clinical category. Found the following invalid combinations:")
+        print("❌ All rules for a given drug/drug class within the same organism must have valid combinations of phenotype and clinical category. Found the following invalid combinations:")
         for message in invalid_combos:
             print(message)
 
