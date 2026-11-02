@@ -26,9 +26,9 @@ def main():
     update_parser = subparsers.add_parser("update-resources", help="Update CARD and AMRFinderPlus resources used for validation")
 
     # convert to latest spec subcommand
-    convert_parser = subparsers.add_parser("convert-to-latest-spec", help="Convert AMRrules file to the latest specification (v0.5 -> v0.6)")
-    convert_parser.add_argument("--input", required=True, help="AMRrules tsv file to convert")
-    convert_parser.add_argument("--output", required=True, help="Converted AMRrules file, in tsv format")
+    #convert_parser = subparsers.add_parser("convert-to-latest-spec", help="Convert AMRrules file to the latest specification (v0.5 -> v0.6)")
+    #convert_parser.add_argument("--input", required=True, help="AMRrules tsv file to convert")
+    #convert_parser.add_argument("--output", required=True, help="Converted AMRrules file, in tsv format")
     
     args = parser.parse_args()
     

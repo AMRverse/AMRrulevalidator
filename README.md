@@ -55,9 +55,9 @@ amrrule update-resources
 ```
 
 This will download the latest versions of:
-- CARD ontology (ARO) (v4.0.1)
-- CARD drug names and drug classes (v4.0.1)
-- NCBI taxonomy data (from CARD (v4.0.1))
+- CARD ontology (ARO, `latest` version) 
+- CARD drug names and drug classes (`latest` version)
+- NCBI taxonomy data (from CARD, `latest` version)
 - AMRFinderPlus Reference Gene Hierarchy, Reference Gene Accessions and HMM accessions (using `latest` version)
 
 ## Usage
@@ -93,11 +93,13 @@ The rules files must contain the following columns:
 - HMM accession
 - nucleotide accession
 - ARO accession
+- gene family
 - mutation
 - variation type
 - gene context
 - drug
 - drug class
+- resistance mechanism
 - phenotype
 - clinical category
 - breakpoint
@@ -108,6 +110,7 @@ The rules files must contain the following columns:
 - evidence grade
 - evidence limitations
 - rule curation note
+- version of latest update
 
 Any columns which do not exist in the file will be added, with all values sent to `ENTRY MISSING`.
 
@@ -136,29 +139,37 @@ The validator performs a series of checks, with each focusing on specific column
 
 7. **ARO accession**: Validates ARO accessions against the CARD ontology.
 
-8. **variation type**: Confirms values match one of the allowed variation types, as per the spec. Value must be supplied, cannot be empty.
+8. **gene family**: Validates the entry in gene family, of the ARO accession is found in the CARD ontology and is a gene family ARO. Otherwise, just ensures there is a valid '-' if left empty.
 
-9. **mutation and variation type compatibility**: Ensures the mutation format is compatible with the specified variation type.
+9. **variation type**: Confirms values match one of the allowed variation types, as per the spec. Value must be supplied, cannot be empty.
 
-10. **gene context**: Validates against allowed values (`core` or `acquired`). Value must be supplied, cannot be empty.
+10. **mutation and variation type compatibility**: Ensures the mutation format is compatible with the specified variation type.
 
-11. **drug and drug class**: Confirms values exist in the CARD drug and drug class lists. A value in one of these columns must be supplied, cannot be empty.
+12. **gene context**: Validates against allowed values (`core` or `acquired`). Value must be supplied, cannot be empty.
 
-12. **phenotype**: Validates against allowed values (`wildtype` or `nonwildtype`). Value must be supplied, cannot be empty.
+12. **drug and drug class**: Confirms values exist in the CARD drug and drug class lists. A value in one of these columns must be supplied, cannot be empty.
 
-13. **clinical category**: Confirms values match the allowed clinical categories (`S`, `I`, or `R`). Value must be supplied, cannot be empty.
+13. **resistance mechanism**: Confirms that the value is one of the CARD `Resistance Mechanisms` in the ARO ontology. *Does not* check whether this is the correct mechanism for a given ARO term. 
 
-14. **breakpoint**: Checks to see if the breakpoint value is consistent with the clinical category. If not, flag for checking. A value must be supplied, if no breakpoint is required then `not applicable` is a valid entry.
+14. **phenotype**: Validates against allowed values (`wildtype` or `nonwildtype`). Value must be supplied, cannot be empty.
 
-15. **breakpoint standard**: Checks to see if the given breakpoint standard source includes information about version, or month/year when standard was set. Flags as a value to check if it doesn't match.
+15. **clinical category**: Confirms values match the allowed clinical categories (`S`, `I`, or `R`). Value must be supplied, cannot be empty.
 
-16. **breakpoint condition**: If provided, confirms values match the allowed breakpoint conditions.
+16. **clinical category and phenotype combination**: Validates, for each drug or drug class (wihtin an organism), that the rules are compatible with each other. Some rule combinations for a given drug or drug class are invalid, [see the AMRrules docs](https://docs.amrrules.org/en/latest/interpretation.html#determining-final-interpretation-for-a-drug-drug-class) for more details.
 
-17. **PMID**: Checks only that there is an entry in this column, as most rules should have a paper associated with them.
+17. **breakpoint**: Checks to see if the breakpoint value is consistent with the clinical category. If not, flag for checking. A value must be supplied, if no breakpoint is required then `not applicable` is a valid entry.
 
-18. **evidence code**: Checks that the codes provided start with the `ECO:` prefix. Will check if they are listed as one of the suggested Evidence Code Ontology codes in the spec - if not, flags as a code to check manually. Checks to make sure multiple codes are separated by a comma and not some other delimiter.
+18. **breakpoint standard**: Checks to see if the given breakpoint standard source includes information about version, or month/year when standard was set. Flags as a value to check if it doesn't match.
 
-19. **evidence grade and limitations**: Validates evidence grades against allowed values. For evidence limitations, checks that mulitple limitations are separated by a comma, and not a different delimiter. Checks limitations are one of the allowed values. Checks that if evidence grade is not `high`, an evidence limitation is provided.
+19. **breakpoint condition**: If provided, confirms values match the allowed breakpoint conditions.
+
+20. **PMID**: Checks only that there is an entry in this column, as most rules should have a paper associated with them.
+
+21. **evidence code**: Checks that the codes provided start with the `ECO:` prefix. Will check if they are listed as one of the suggested Evidence Code Ontology codes in the spec - if not, flags as a code to check manually. Checks to make sure multiple codes are separated by a comma and not some other delimiter.
+
+22. **evidence grade and limitations**: Validates evidence grades against allowed values. For evidence limitations, checks that mulitple limitations are separated by a comma, and not a different delimiter. Checks limitations are one of the allowed values. Checks that if evidence grade is not `high`, an evidence limitation is provided.
+
+23. **version of last update**: Checks that this column has an entry that isn't empty or '-'. Value must start with `v`.
 
 Allowable values for some columns are specified within `constants.py`, and should match the current version of the AMRrules spec.
 
@@ -169,24 +180,6 @@ After validation, you can clean a rules file to prepare it for import into the i
 ```bash
 amrrule clean --input path/to/validated_rules.tsv --output path/to/clean_rules.tsv
 ```
-
-### Updating rules file to spec v0.6
-
-Can take already validated v0.5 rules files and do a programmatic update to v0.6.
-
-```bash
-amrrule convert-to-latest-spec --input path/to/old_rules.tsv --output path/to/updated_rules.tsv
-```
-
-Adds new columns as specified in spec.
-
-For txid, will use value in organism to look up the relevant txid in the NCBI taxonomy, if not found will enter `UNKNOWN`.
-
-For refseq and GenBank accessions, will look up accessions in the AMRFinderPlus reference database to try and determine if they are protein or nucleotide accessions, and update accordingly. If unclear, will add to one of the columns and add `CHECK ACCESSION TYPE` for manual fixing.
-
-Adds breakpoint standard column but fills with `ADD VALUE`, which will likely be `-` in most cases.
-
-Updates evidence grade column: `strong` becomes `high`, `weak` gets flagged with `UPDATE TO low or very low`, so the user can select the most appropriate option.
 
 ## License
 
