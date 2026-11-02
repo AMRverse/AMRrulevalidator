@@ -132,7 +132,7 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     )
 
     print("\nChecking drug and drug class columns...")
-    summary_checks["drug and drug class"], rows = check_drug_drugclass(
+    summary_checks["drug and drug class"], rows, invalid_drug_rows = check_drug_drugclass(
             get_column("drug", rows), 
             get_column("drug class", rows),
             rows,
@@ -148,13 +148,26 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
 
     # Check phenotype
     print("\nChecking phenotype column...")
-    summary_checks["phenotype"], rows = check_phenotype(
+    summary_checks["phenotype"], rows, invalid_pheno_rows = check_phenotype(
         get_column("phenotype", rows),
         rows)
 
     # Check clinical category
     print("\nChecking clinical category column...")
-    summary_checks["clinical category"], rows = check_clinical(get_column("clinical category", rows), rows)
+    summary_checks["clinical category"], rows, invalid_cat_rows = check_clinical(get_column("clinical category", rows), rows)
+
+    # Check pheno and clin category in combination, by drug & drug class
+    print("\nChecking phenotype and clinical category columns are compatible within drugs or drug classes...")
+    # combine all the invalid rows from individual checks
+    invalid_rows_for_pheno_clin = {**invalid_pheno_rows, **invalid_cat_rows, **invalid_drug_rows}
+    summary_checks["phenotype and clinical category"], rows = check_phenotype_clinical(
+        get_column("phenotype", rows),
+        get_column("clinical category", rows),
+        get_column("drug", rows),
+        get_column("drug class", rows),
+        invalid_rows_for_pheno_clin,
+        rows
+    )
 
     print("\nChecking breakpoint column...")
     summary_checks["breakpoint"], rows = check_breakpoint(

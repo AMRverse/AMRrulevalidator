@@ -549,7 +549,7 @@ def check_drug_drugclass(drug_list, drug_class_list, rows, rm=None):
         failure_message="One of drug and drug class columns must contain a value that is not empty, NA or '-'. Drug names and classes should be in the CARD ontology list, as per file resources/card_drug_names.tsv."
     )
 
-    return check_result, rows
+    return check_result, rows, {**invalid_rows_combo, **invalid_dict_drug, **invalid_dict_drug_class}
 
 
 def check_res_mechanism(res_mechanism_list, res_terms, rows):
@@ -601,7 +601,7 @@ def check_phenotype(phenotype_list, rows):
         failure_message="Phenotype values must be either 'wildtype' or 'non wildtype'."
     )
 
-    return check_result, rows
+    return check_result, rows, invalid_dict
 
 
 def check_clinical(clinical_cat_list, rows):
@@ -629,6 +629,55 @@ def check_clinical(clinical_cat_list, rows):
         success_message="All clinical category values are valid",
         failure_message="Clinical category must be one of the following: S, I, or R."
     )
+
+    return check_result, rows, invalid_dict
+
+
+def check_phenotype_clinical(phenotype_list, clinical_cat_list, drug_list, drug_class_list, invalid_rows, rows):
+    # Check that the combination of phenotypes and clincial categories, for a particular drug or drug class, are valid.
+    # Valid combinations are listed in constants.py under PAIRWISE_TABLE. Values that return 'IMPOSSIBLE' are invalid.
+    # If drug and drug class are both empty, we can't check this row, and so will skip (these will be flagged earlier anyway).
+    # I think we want to skip any rows that have been flagged as invalid during the drug/drug class check
+
+    # rows should then be grouped by drug, or drug class if no drug is listed
+    # then for each group, check each pair, and determine if any pair are invalid.
+    drug_and_class_dict = {} #key: drug/class, value: list of (phenotype, clinical category) pairs
+    for index, value in enumerate(zip(phenotype_list, clinical_cat_list, drug_list, drug_class_list)):
+        if index in invalid_rows:
+            # skip any rows that we know are invalid already
+            print(f"Skipping row {index + 2} because it has already been flagged as invalid for one of the required columns in a previous check.")
+            continue
+        phenotype = value[0].strip()
+        clinical_cat = value[1].strip()
+        drug = value[2].strip()
+        drug_class = value[3].strip()
+        if phenotype in ['NA', '-', ''] and clinical_cat in ['NA', '-', '']:
+            # can't check rows that are deliberately blank
+            continue
+        if drug in ['NA', '-', ''] and drug_class in ['NA', '-', '']:
+            # we can't check this row, so we will skip it
+            continue
+        # create a dictionary for each drug or drug class, and the associated phenotype and clinical category pairs
+        drug_and_class_dict.setdefault(drug if drug not in ['NA', '-', ''] else drug_class, []).append((phenotype, clinical_cat))
+    
+    # now we can check the pairwise table for this combination
+    check_result = True # assume all pairs are valid
+    invalid_combos = set() # to keep track of invalid combinations, so we don't print duplicates
+    for drug_or_class, pairs in drug_and_class_dict.items():
+        for i in range(len(pairs)):
+            for j in range(i + 1, len(pairs)):
+                pair1 = pairs[i]
+                pair2 = pairs[j]
+                if PAIRWISE_TABLE.get(pair1) and PAIRWISE_TABLE[pair1].get(pair2) == 'IMPOSSIBLE':
+                    invalid_combos.add(f"Invalid combination of phenotype and clinical category for {drug_or_class}: {pair1} and {pair2} are incompatible.")
+                    check_result = False
+
+    if check_result:
+        print("✅ All rules for a given drug/drug class have valid phenotype and clinical category combinations.")
+    else:
+        print("❌ All rules for a given drug/drug class must have valid combinations of phenotype and clinical category. Found the following invalid combinations:")
+        for message in invalid_combos:
+            print(message)
 
     return check_result, rows
 
