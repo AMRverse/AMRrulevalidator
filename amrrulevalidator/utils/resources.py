@@ -171,8 +171,8 @@ class ResourceManager:
         with open(hmm_file, 'r', newline='') as file:
             reader = csv.DictReader(file, delimiter='\t')
             for row in reader:
-                if 'HMM Accession' in row and row['HMM Accession'].strip():
-                    self._hmm_accessions_cache.append(row['HMM Accession'].strip())
+                if '#hmm_accession' in row and row['#hmm_accession'].strip():
+                    self._hmm_accessions_cache.append(row['#hmm_accession'].strip())
         
         # remove any empty strings
         self._hmm_accessions_cache  = [value for value in self._hmm_accessions_cache if value != ""]
