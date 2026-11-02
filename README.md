@@ -1,6 +1,6 @@
 # AMRrulevalidator
 
-The AMRrulevalidator package provides tools for validating [AMRrules files](https://github.com/interpretAMR/AMRrules) according to the current specification ([v0.6](https://github.com/AMRverse/AMRrulesCuration)).
+The AMRrulevalidator package provides tools for validating [AMRrules files](https://github.com/interpretAMR/AMRrules) according to the current specification ([v1.1](https://github.com/AMRverse/AMRrulesCuration)).
 
 As part of the install, AMRrulevalidator will download the current CARD ontology and AMRFinderPlus resources to validate against.
 
