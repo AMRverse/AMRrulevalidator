@@ -49,6 +49,7 @@ class ResourceManager:
         self._refseq_prot_cache: Optional[list] = None
         self._refseq_nucl_cache: Optional[list] = None
         self._hmm_accessions_cache: Optional[list] = None
+        self._card_res_mechanisms_cache: Optional[list] = None
     
     def aro_terms(self) -> list:
         """Get ARO terms from cached OBO file, loading if necessary."""
@@ -60,6 +61,35 @@ class ResourceManager:
                 # Return empty list if file doesn't exist yet
                 self._aro_terms_cache = []
         return self._aro_terms_cache
+
+    def aro_term_family(self) -> Dict[str, str]:
+        """Get ARO term family mapping from cached categories file, loading if necessary."""
+        categories_file = self.dir / "aro_categories.tsv"
+        if categories_file.exists():
+            aro_term_family = {}
+            with open(categories_file, 'r', newline='') as file:
+                reader = csv.DictReader(file, delimiter='\t')
+                for row in reader:
+                    if row['ARO Category'] == 'AMR Gene Family':
+                        aro_term_family[row['ARO Accession']] = row['ARO Name']
+            return aro_term_family
+        
+        return aro_term_family
+    def card_res_mechanisms(self) -> list:
+        """Get resistance mechanisms from cached CARD categories file, loading if necessary."""
+        if self._card_res_mechanisms_cache is None:
+            categories_file = self.dir / "aro_categories.tsv"
+            if categories_file.exists():
+                self._card_res_mechanisms_cache = []
+                with open(categories_file, 'r', newline='') as file:
+                    reader = csv.DictReader(file, delimiter='\t')
+                    for row in reader:
+                        if row['ARO Category'] == 'Resistance Mechanism':
+                            self._card_res_mechanisms_cache.append(row['ARO Name'])
+            else:
+                # Return empty list if file doesn't exist yet
+                self._card_res_mechanisms_cache = []
+        return self._card_res_mechanisms_cache
     
     def refseq_nodes(self) -> list:
 
@@ -282,14 +312,15 @@ class ResourceManager:
         except Exception as e:
             print(f"Error generating drug names file: {e}")
             return False
+
     
     def download_card_archives(self):
         """
         Download and extract CARD ontology and data files into the resource directory.
         """
         # URLs for the CARD archives
-        card_ontology_url = "https://card.mcmaster.ca/download/5/ontology-v4.0.1.tar.bz2"
-        card_data_url = "https://card.mcmaster.ca/download/0/broadstreet-v4.0.1.tar.bz2"
+        card_ontology_url = "https://card.mcmaster.ca/latest/ontology"
+        card_data_url = "https://card.mcmaster.ca/latest/data"
 
         # Files to extract from each archive
         card_ontology_files = ["aro.obo", "ncbi_taxonomy.tsv"]
