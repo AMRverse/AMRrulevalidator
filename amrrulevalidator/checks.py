@@ -300,6 +300,7 @@ def check_id_accessions(nodeID_list, protein_list, nucleotide_list, hmm_list, va
 
     return check_result, rows
 
+
 def check_aro(aro_list, aro_terms, rows):
 
     aro_missing, rows = check_if_col_empty(aro_list, 'ARO accession', rows=rows)
@@ -326,7 +327,45 @@ def check_aro(aro_list, aro_terms, rows):
     )
 
     return check_result, rows
-    
+
+
+def check_gene_family(gene_family_list, aro_list, aro_term_family, rows):
+
+    gene_family_missing, rows = check_if_col_empty(gene_family_list, 'gene family', rows=rows)
+
+    if gene_family_missing:
+        print("❌ Gene family column is empty. Please provide values in this column to validate.")
+        return False, rows
+
+    # check that gene family is either filled with '-', or, if aro is present and gene family is not '-', does it match the gene family for that ARO accession in the aro_terms dictionary
+    # dict is aro accession: gene family
+    invalid_dict = {}
+    for index, (gene_family, aro) in enumerate(zip(gene_family_list, aro_list)):
+        gene_family = gene_family.strip()
+        aro = aro.strip()
+        if gene_family == '-':
+            continue
+        if aro == '-' or aro == '':
+            rows[index]['gene family'] = 'CHECK VALUE: ' + gene_family
+            reason = f"ARO accession is missing, but gene family is filled with {gene_family}."
+            invalid_dict[index] = reason
+            continue
+        if aro in aro_term_family:
+            expected_family = aro_term_family[aro]
+            if gene_family != expected_family:
+                rows[index]['gene family'] = 'CHECK VALUE: ' + gene_family
+                reason = f"Gene family {gene_family} does not match expected family {expected_family} for ARO accession {aro}."
+                invalid_dict[index] = reason
+
+    check_result = report_check_results(
+        check_name="gene family",
+        invalid_dict=invalid_dict,
+        success_message="All gene family values are valid",
+        failure_message="Gene family values are optional, but if provided, they must match the expected gene family for the corresponding ARO accession."
+    )
+
+    return check_result, rows
+
 
 def check_variation(variation_list, rows):
 
@@ -508,6 +547,32 @@ def check_drug_drugclass(drug_list, drug_class_list, rows, rm=None):
         invalid_dict={**invalid_rows_combo, **invalid_dict_drug, **invalid_dict_drug_class},
         success_message="All drug and drug class values are valid",
         failure_message="One of drug and drug class columns must contain a value that is not empty, NA or '-'. Drug names and classes should be in the CARD ontology list, as per file resources/card_drug_names.tsv."
+    )
+
+    return check_result, rows
+
+
+def check_res_mechanism(res_mechanism_list, res_terms, rows):
+
+    res_mechanism_missing, rows = check_if_col_empty(res_mechanism_list, 'resistance mechanism', rows=rows)
+
+    if res_mechanism_missing:
+        print("❌ Resistance mechanism column is empty. Please provide values in this column to validate.")
+        return False, rows
+    
+    # check that resistance mechanism is one of the allowable values
+    invalid_dict, rows = check_values_in_list(
+        value_list=res_mechanism_list,
+        allowed_values=res_terms,
+        col_name='resistance mechanism',
+        rows=rows
+    )
+
+    check_result = report_check_results(
+        check_name="resistance mechanism",
+        invalid_dict=invalid_dict,
+        success_message="All resistance mechanism values are valid",
+        failure_message="Resistance mechanism values must be one of the following: " + ", ".join(res_terms) + "."
     )
 
     return check_result, rows

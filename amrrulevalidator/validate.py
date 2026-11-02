@@ -105,6 +105,11 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     aro_terms = rm.aro_terms()  # Get ARO terms from ResourceManager
     summary_checks["ARO accession"], rows = check_aro(get_column("ARO accession", rows), aro_terms, rows)
 
+    # Check gene family
+    print("\nChecking gene family column...")
+    aro_term_family = rm.aro_term_family()  # Get ARO term family mapping from ResourceManager
+    summary_checks["gene family"], rows = check_gene_family(get_column("gene family", rows), get_column("ARO accession", rows), aro_term_family, rows)
+
     # Check variation type
     print("\nChecking variation type column...")
     summary_checks["variation type"], rows = check_variation(get_column("variation type", rows), rows)
@@ -133,6 +138,14 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
             rows,
             rm)
 
+    # Check resistance mechanism
+    print("\nChecking resistance mechanism column...")
+    summary_checks["resistance mechanism"], rows = check_res_mechanism(
+        get_column("resistance mechanism", rows), 
+        rm.card_res_mechanisms(), 
+        rows
+    )
+
     # Check phenotype
     print("\nChecking phenotype column...")
     summary_checks["phenotype"], rows = check_phenotype(
@@ -155,8 +168,9 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     summary_checks["breakpoint standard"], rows = check_bp_standard(get_column("breakpoint standard", rows), rows)
     
     # Check breakpoint condition
-    print("\nChecking breakpoint condition column...")
-    summary_checks["breakpoint condition"], rows = check_bp_condition(get_column("breakpoint condition", rows), rows)
+    # NOTE: this column was removed in spec v1.1, so we don't need to check this now
+    #print("\nChecking breakpoint condition column...")
+    #summary_checks["breakpoint condition"], rows = check_bp_condition(get_column("breakpoint condition", rows), rows)
 
     # Check PMID
     print("\nChecking PMID column...")
