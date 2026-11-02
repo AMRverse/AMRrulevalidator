@@ -661,7 +661,7 @@ def check_breakpoint(breakpoint_list, clinical_cat_list, rows):
             reason = None
             if category == 'S' and not any(breakpoint.startswith(prefix) for prefix in ['MIC <', 'MIC <=', 'disk >', 'not available', 'not applicable']):
                 reason = "If clinical category is 'S', breakpoint should contain a value of 'MIC <', 'MIC <=', or 'disk >'. 'not available' is an allowed value if no breakpoint is available due to expected resistances. 'not applicable' is an allowed value if the rule is for a drug class."
-            if category == 'R' and not any(breakpoint.startswith(prefix) for prefix in ['MIC >', 'MIC >=', 'disk <', 'not available']):
+            if category == 'R' and not any(breakpoint.startswith(prefix) for prefix in ['MIC >', 'MIC >=', 'disk <', 'not applicable', 'not available']):
                 reason = "If clinical category is 'R', breakpoint should contain a value of 'MIC >', 'MIC >=', or 'disk <'. 'not available' is an allowed value if no breakpoint is available due to expected resistances. 'not applicable' is an allowed value if the rule is for a drug class."
             if category == 'ENTRY MISSING' or category.startswith('CHECK VALUE'):
                 reason = "Clinical category is missing or invalid, so breakpoint cannot be validated. Please provide clinical category to validate this row properly."
@@ -876,4 +876,34 @@ def check_evidence_grade_limitations(evidence_grade_list, evidence_limitations_l
         failure_message="Evidence grade must be one of the following: " + ", ".join(EVIDENCE_GRADES) + ". Evidence limitations must be one of the following: " + ", ".join(EVIDENCE_LIMITATIONS) + ". If evidence grade is 'moderate', 'low', or 'very low', then evidence limitations must contain a value, not '-'. If evidence limitations is empty, it should be '-', not 'ENTRY MISSING'."
     )
     
+    return check_result, rows
+
+
+def check_version_record(version_record_list, rows):
+
+    version_record_missing, rows = check_if_col_empty(version_record_list, 'version record', rows=rows)
+
+    if version_record_missing:
+        print("❌ Version record column is empty. Please provide values in this column to validate.")
+        return False, rows
+    
+    # check that there is something in this column and it starts with 'v'.
+    invalid_indexes = []
+    for index, value in enumerate(version_record_list):
+        value = value.strip()
+        if value in ['NA', '', '-']:
+            rows[index]['version record'] = 'ENTRY MISSING'
+            invalid_indexes.append(index)
+            continue
+        if not value.startswith('v'):
+            rows[index]['version record'] = 'CHECK VALUE: ' + value
+            invalid_indexes.append(index)
+
+    check_result = report_check_results(
+        check_name="version record",
+        invalid_indices=invalid_indexes,
+        success_message="All version record values are valid",
+        failure_message="Version of last update column must contain a value starting with 'v', and cannot be empty, NA, or '-'."
+    )
+
     return check_result, rows

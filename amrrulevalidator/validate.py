@@ -185,6 +185,10 @@ def run_validate(input_p: Path, output_p: Path, rm: ResourceManager) -> bool:
     print("\nChecking evidence grade and limitations columns...")
     summary_checks["evidence grade and limitations"], rows = check_evidence_grade_limitations(get_column("evidence grade", rows), get_column("evidence limitations", rows), rows)
 
+    # Check version column
+    print("\nChecking version of latest update column...")
+    summary_checks["version of latest update"], rows = check_version_record(get_column("version of last update", rows), rows)
+
     # Print summary of checks
     passed_checks = [check for check, status in summary_checks.items() if status]
     failed_checks = [check for check, status in summary_checks.items() if not status]
